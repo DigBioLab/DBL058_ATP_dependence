@@ -1,0 +1,9 @@
+# Large cached/computed data — regenerate locally
+pdb_cache/
+output/rmsd_matrix.npy
+output/binding/plip_results/
+
+# Python artifacts
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

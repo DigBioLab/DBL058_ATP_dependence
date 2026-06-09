@@ -1,0 +1,436 @@
+[
+  {
+    "cluster": 1,
+    "n_structures": 20,
+    "pdb_ids": [
+      "1ATN",
+      "1C0F",
+      "1C0G",
+      "1CSN",
+      "1D4X",
+      "1DEJ",
+      "1E8X",
+      "1EQY",
+      "1ESV",
+      "1FQ1",
+      "1GOL",
+      "1GY3",
+      "1H1V",
+      "1HLU",
+      "1IJJ",
+      "1JST",
+      "1LCU",
+      "1LOT",
+      "1MA9",
+      "1MDU"
+    ],
+    "signature_features": [
+      {
+        "res_type": "ASP",
+        "itype": "HBond_Acc",
+        "n_structs": 20
+      },
+      {
+        "res_type": "ATP",
+        "itype": "Metal",
+        "n_structs": 19
+      },
+      {
+        "res_type": "LYS",
+        "itype": "Salt",
+        "n_structs": 19
+      },
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Don",
+        "n_structs": 17
+      },
+      {
+        "res_type": "LYS",
+        "itype": "HBond_Don",
+        "n_structs": 17
+      },
+      {
+        "res_type": "ASP",
+        "itype": "HBond_Don",
+        "n_structs": 17
+      },
+      {
+        "res_type": "SER",
+        "itype": "HBond_Don",
+        "n_structs": 17
+      },
+      {
+        "res_type": "GLU",
+        "itype": "HBond_Acc",
+        "n_structs": 15
+      }
+    ]
+  },
+  {
+    "cluster": 2,
+    "n_structures": 8,
+    "pdb_ids": [
+      "10TZ",
+      "1B38",
+      "1B39",
+      "1DY3",
+      "1FIN",
+      "1HCK",
+      "1KAX",
+      "1KAZ"
+    ],
+    "signature_features": [
+      {
+        "res_type": "ASP",
+        "itype": "Metal",
+        "n_structs": 7
+      },
+      {
+        "res_type": "GLU",
+        "itype": "HBond_Acc",
+        "n_structs": 7
+      },
+      {
+        "res_type": "ATP",
+        "itype": "Metal",
+        "n_structs": 7
+      },
+      {
+        "res_type": "TYR",
+        "itype": "HBond_Don",
+        "n_structs": 7
+      },
+      {
+        "res_type": "HOH",
+        "itype": "Metal",
+        "n_structs": 6
+      },
+      {
+        "res_type": "ASP",
+        "itype": "WaterBr",
+        "n_structs": 6
+      },
+      {
+        "res_type": "THR",
+        "itype": "HBond_Don",
+        "n_structs": 6
+      },
+      {
+        "res_type": "GLN",
+        "itype": "HBond_Acc",
+        "n_structs": 5
+      }
+    ]
+  },
+  {
+    "cluster": 3,
+    "n_structures": 30,
+    "pdb_ids": [
+      "11KK",
+      "11KO",
+      "1A82",
+      "1AQ2",
+      "1ATP",
+      "1AYL",
+      "1B8A",
+      "1D9Z",
+      "1E24",
+      "1E2Q",
+      "1E4G",
+      "1E79",
+      "1EE1",
+      "1F2U",
+      "1FMW",
+      "1G5T",
+      "1G64",
+      "1H8H",
+      "1II0",
+      "1KJ8",
+      "1KJ9",
+      "1KO5",
+      "1KVK",
+      "1LHR",
+      "1M83",
+      "1MAB",
+      "1MAU",
+      "1MAW",
+      "1MB9",
+      "1MJH"
+    ],
+    "signature_features": [
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Don",
+        "n_structs": 29
+      },
+      {
+        "res_type": "ATP",
+        "itype": "Metal",
+        "n_structs": 29
+      },
+      {
+        "res_type": "LYS",
+        "itype": "Salt",
+        "n_structs": 26
+      },
+      {
+        "res_type": "HOH",
+        "itype": "Metal",
+        "n_structs": 24
+      },
+      {
+        "res_type": "LYS",
+        "itype": "HBond_Don",
+        "n_structs": 21
+      },
+      {
+        "res_type": "SER",
+        "itype": "HBond_Don",
+        "n_structs": 20
+      },
+      {
+        "res_type": "THR",
+        "itype": "HBond_Don",
+        "n_structs": 18
+      },
+      {
+        "res_type": "ARG",
+        "itype": "WaterBr",
+        "n_structs": 15
+      }
+    ]
+  },
+  {
+    "cluster": 4,
+    "n_structures": 11,
+    "pdb_ids": [
+      "1ESQ",
+      "1F9A",
+      "1GN8",
+      "1GZ3",
+      "1GZ4",
+      "1J1Z",
+      "1J21",
+      "1J7K",
+      "1KH2",
+      "1KP2",
+      "1KP3"
+    ],
+    "signature_features": [
+      {
+        "res_type": "ARG",
+        "itype": "Salt",
+        "n_structs": 11
+      },
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Don",
+        "n_structs": 10
+      },
+      {
+        "res_type": "THR",
+        "itype": "HBond_Don",
+        "n_structs": 9
+      },
+      {
+        "res_type": "ARG",
+        "itype": "WaterBr",
+        "n_structs": 9
+      },
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Acc",
+        "n_structs": 8
+      },
+      {
+        "res_type": "THR",
+        "itype": "WaterBr",
+        "n_structs": 8
+      },
+      {
+        "res_type": "ALA",
+        "itype": "HBond_Don",
+        "n_structs": 8
+      },
+      {
+        "res_type": "ARG",
+        "itype": "HBond_Don",
+        "n_structs": 8
+      }
+    ]
+  },
+  {
+    "cluster": 5,
+    "n_structures": 12,
+    "pdb_ids": [
+      "11TA",
+      "11VE",
+      "1B0U",
+      "1DO0",
+      "1G21",
+      "1G3I",
+      "1I7L",
+      "1JI0",
+      "1KYI",
+      "1L2T",
+      "1MIW",
+      "1MV5"
+    ],
+    "signature_features": [
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Don",
+        "n_structs": 12
+      },
+      {
+        "res_type": "LYS",
+        "itype": "Salt",
+        "n_structs": 12
+      },
+      {
+        "res_type": "LYS",
+        "itype": "HBond_Don",
+        "n_structs": 11
+      },
+      {
+        "res_type": "THR",
+        "itype": "HBond_Don",
+        "n_structs": 11
+      },
+      {
+        "res_type": "ASP",
+        "itype": "HBond_Acc",
+        "n_structs": 9
+      },
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Acc",
+        "n_structs": 8
+      },
+      {
+        "res_type": "SER",
+        "itype": "HBond_Don",
+        "n_structs": 8
+      },
+      {
+        "res_type": "ARG",
+        "itype": "Salt",
+        "n_structs": 7
+      }
+    ]
+  },
+  {
+    "cluster": 6,
+    "n_structures": 6,
+    "pdb_ids": [
+      "1ASZ",
+      "1B76",
+      "1H4Q",
+      "1HP1",
+      "1JKN",
+      "1KMN"
+    ],
+    "signature_features": [
+      {
+        "res_type": "ARG",
+        "itype": "HBond_Don",
+        "n_structs": 6
+      },
+      {
+        "res_type": "ARG",
+        "itype": "Salt",
+        "n_structs": 6
+      },
+      {
+        "res_type": "PHE",
+        "itype": "PiStack",
+        "n_structs": 6
+      },
+      {
+        "res_type": "GLN",
+        "itype": "HBond_Don",
+        "n_structs": 4
+      },
+      {
+        "res_type": "ARG",
+        "itype": "PiCat",
+        "n_structs": 4
+      },
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Don",
+        "n_structs": 3
+      },
+      {
+        "res_type": "GLU",
+        "itype": "HBond_Acc",
+        "n_structs": 3
+      },
+      {
+        "res_type": "GLY",
+        "itype": "HBond_Acc",
+        "n_structs": 2
+      }
+    ]
+  },
+  {
+    "cluster": 7,
+    "n_structures": 11,
+    "pdb_ids": [
+      "12OC",
+      "13JB",
+      "1A0I",
+      "1BCP",
+      "1DV2",
+      "1GTR",
+      "1H1W",
+      "1H3E",
+      "1HI1",
+      "1J09",
+      "1MO8"
+    ],
+    "signature_features": [
+      {
+        "res_type": "LYS",
+        "itype": "Salt",
+        "n_structs": 10
+      },
+      {
+        "res_type": "GLU",
+        "itype": "HBond_Acc",
+        "n_structs": 8
+      },
+      {
+        "res_type": "LYS",
+        "itype": "HBond_Don",
+        "n_structs": 5
+      },
+      {
+        "res_type": "HIS",
+        "itype": "Salt",
+        "n_structs": 5
+      },
+      {
+        "res_type": "SER",
+        "itype": "HBond_Acc",
+        "n_structs": 5
+      },
+      {
+        "res_type": "ARG",
+        "itype": "HBond_Don",
+        "n_structs": 5
+      },
+      {
+        "res_type": "ASP",
+        "itype": "HBond_Don",
+        "n_structs": 4
+      },
+      {
+        "res_type": "GLU",
+        "itype": "HBond_Don",
+        "n_structs": 4
+      }
+    ]
+  }
+]
