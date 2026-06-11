@@ -3,19 +3,19 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.11
-  - openbabel=3.2.0
-  - pymol-open-source
+  - python=3.10
+  - libstdcxx-ng
   - ipykernel
+  - openbabel
+  - pymol-open-source
+  - rdkit
+  - biopython
+  - lxml
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - scipy
+  - tqdm
+  - requests
   - pip
-  - pip:
-    - plip==3.0.0
-    - biopython==1.87
-    - pandas==3.0.3
-    - numpy==2.4.6
-    - scipy==1.17.1
-    - matplotlib==3.10.9
-    - seaborn==0.13.2
-    - scikit-learn==1.9.0
-    - tqdm==4.68.1
-    - lxml==6.1.1
