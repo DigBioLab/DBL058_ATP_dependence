@@ -9,8 +9,9 @@
 #BSUB -B
 #BSUB -N
 
-source /work3/s212001/miniforge3/etc/profile.d/conda.sh
+CONDA_BASE="${CONDA_BASE:-$HOME/miniforge3}"
+source "$CONDA_BASE/etc/profile.d/conda.sh"
 conda activate atp_project_env
 
-cd /work3/s212001/ATP_dependent
+cd "$(dirname "$(realpath "$0")")/.."
 python scripts/03_run_plip.py --n-workers 16
