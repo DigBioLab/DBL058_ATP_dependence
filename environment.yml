@@ -3,19 +3,44 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.11
   - libstdcxx-ng
+
+  # ── Jupyter ────────────────────────────────────────────────────────────────
   - ipykernel
-  - openbabel
-  - pymol-open-source
-  - rdkit
-  - biopython
-  - lxml
+  - jupyterlab
+
+  # ── Scientific computing ───────────────────────────────────────────────────
   - numpy
   - pandas
+  - scipy
   - matplotlib
   - seaborn
-  - scipy
   - tqdm
+  - networkx
+
+  # ── Bioinformatics / cheminformatics ───────────────────────────────────────
+  - biopython
+  - rdkit
+  - openbabel
+  - py3dmol        # 3-D structure viewer in notebooks
+
+  # ── Utilities ─────────────────────────────────────────────────────────────
   - requests
+  - lxml
   - pip
+
+# ── Notes on external / sys.path dependencies ─────────────────────────────
+# The following are NOT conda packages — they are accessed via sys.path in
+# the notebooks and pipeline scripts. No changes needed to this file for them.
+#
+#   jupyter_utils, rf3_sm_metrics
+#     → /work3/s212001/DBL_secrets/enzdes_pipeline-main/
+#
+#   atomworks, pai  (proteusai)
+#     → sys.path.append("/dtu/projects/dbl/proteusai/latest/src/")
+#       (atomworks is at /dtu/projects/dbl/proteusai/latest/lib/atomworks/src/)
+#
+# Register the env as a Jupyter kernel after creation:
+#   conda activate atp_project_env
+#   python -m ipykernel install --user --name atp_project_env --display-name "atp_project_env"
