@@ -2,9 +2,11 @@
 Enzyme design pipeline configuration — edit this file to match your campaign.
 All other pipeline scripts import from here; you should not need to change them.
 """
+import os
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
-PIPELINE_DIR   = "/work3/s212001/ATP_dependent/pipeline"
+PIPELINE_DIR   = os.path.dirname(os.path.abspath(__file__))
+SCRIPTS_DIR    = os.path.join(os.path.dirname(PIPELINE_DIR), "scripts")
 PYTHON_EXEC    = "/work3/s212001/miniforge3/envs/atp_project_env/bin/python3"
 ENZDES_SCRIPTS = "/work3/s212001/DBL_secrets/enzdes_pipeline-main"
 

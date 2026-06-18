@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use("Agg")   # non-interactive backend for HPC
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, "/work3/s212001/ATP_dependent/pipeline")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)

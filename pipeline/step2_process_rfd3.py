@@ -4,7 +4,7 @@ Step 2 (LSF CPU job): Process RFD3 outputs, generate MPNN cmds, submit MPNN + st
 Runs automatically after the RFD3 job completes via LSF dependency.
 """
 import sys, os, glob, json, csv, gzip, re, subprocess
-sys.path.insert(0, "/work3/s212001/ATP_dependent/pipeline")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)
@@ -24,24 +24,6 @@ def _bsub_jid(cmd):
     if not m:
         raise RuntimeError(f"No job ID in bsub output: {r.stdout}")
     return m.group(1)
-
-
-def _motif_residues_from_cif(cif_gz_path):
-    """Return space-separated 'ChainRes' labels for atoms with is_motif_atom_with_fixed_seq=True."""
-    seen, order = set(), []
-    with gzip.open(cif_gz_path, "rt") as fh:
-        for line in fh:
-            if not line.startswith("ATOM"):
-                continue
-            parts = line.split()
-            if len(parts) < 18 or parts[17] != "True":
-                continue
-            key = (parts[11], int(parts[9]))   # (auth_asym_id, auth_seq_id)
-            if key not in seen:
-                seen.add(key)
-                order.append(key)
-    order.sort()
-    return " ".join(f"{c}{r}" for c, r in order)
 
 
 # ── 1. Collect RFD3 metrics and save CSV ─────────────────────────────────────
@@ -88,14 +70,13 @@ with open(mpnn_cmds, "w") as f:
         bn = os.path.basename(structure).replace(".cif.gz", "").replace(".pdb", "")
         this_outdir = f"{config.MPNN_OUT_DIR}/{bn}"
         os.makedirs(this_outdir, exist_ok=True)
-        fixed_resis = _motif_residues_from_cif(structure)
 
         cmd = (
             f"python /dtu/projects/dbl/LigandMPNN/25.3.1-0/run.py"
             f" --seed {config.MPNN_SEED}"
             f" --pdb_path \"{structure}\""
             f" --out_folder \"{this_outdir}\""
-            f" --fixed_residues \"{fixed_resis}\""
+            f" --fixed_residues \"\""
             f" --batch_size {config.MPNN_BATCH_SIZE}"
             f" --number_of_batches {config.MPNN_N_BATCHES}"
             f" --model_type \"ligand_mpnn\""
@@ -109,6 +90,11 @@ print(f"Filtered {bad} bad structures. Generated {n_tasks} MPNN commands.", flus
 
 if n_tasks == 0:
     sys.exit("ERROR: 0 MPNN commands generated — all structures were filtered out.")
+
+# ── 2b. Fill fixed residues from motif atoms ──────────────────────────────────
+fill_script = os.path.join(config.SCRIPTS_DIR, "fill_fixed_residues.py")
+subprocess.run([config.PYTHON_EXEC, fill_script, mpnn_cmds], check=True)
+print("Fixed residues filled via fill_fixed_residues.py", flush=True)
 
 jupyter_utils.make_sub_script(
     mpnn_cmds, n_task=n_tasks, group_size=10, mem="10G", queue="hpc",

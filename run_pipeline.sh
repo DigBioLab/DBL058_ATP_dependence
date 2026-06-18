@@ -1,28 +1,33 @@
 #!/bin/bash
-# Enzyme design pipeline orchestrator: RFD3 → MPNN → RF3 → RF3-nol → analysis
+# Enzyme design pipeline orchestrator: RFD3 → fill_fixed_residues → MPNN → RF3 → RF3-nol → analysis
 #
 # Usage:
-#   bash /work3/s212001/ATP_dependent/run_pipeline.sh
+#   bash /path/to/ATP_dependent/run_pipeline.sh
 #
 # What this script does:
 #   1. Runs step0_setup.py locally to generate RFD3 configs and submit script
 #   2. Submits the RFD3 GPU job
 #   3. Submits step2 as a CPU job that waits for RFD3
-#      — step2 generates MPNN cmds, submits MPNN, then submits step3
+#      — step2 generates MPNN cmds, calls scripts/fill_fixed_residues.py to populate
+#        fixed residues from motif atoms, then submits MPNN and chains step3 → step4 → step5
 #      — step3 generates RF3 cmds, submits RF3, then submits step4
 #      — step4 shortlists, generates RF3-nol cmds, submits RF3-nol, then submits step5
 #      — step5 runs the final ligand-dependence analysis (terminal step)
 #
-# Edit pipeline/config.py to change campaign parameters.
+# Edit pipeline/config.py to change campaign parameters (user, PYTHON_EXEC, thresholds).
 
 set -euo pipefail
 
-PIPELINE_DIR="/work3/s212001/ATP_dependent/pipeline"
-PYTHON_EXEC="/work3/s212001/miniforge3/envs/atp_project_env/bin/python3"
-WORKING_DIR="/work3/s212001/projects/enzyme_design/atp_binding/conditioned_assembly/8btg_D501"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PIPELINE_DIR="${SCRIPT_DIR}/pipeline"
+SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
 
-CMDS_DIR="${WORKING_DIR}/cmds"
-LOGS_DIR="${WORKING_DIR}/logs"
+# Read campaign-specific paths from config.py — edit pipeline/config.py to change these.
+_cfg() { python3 -c "import sys; sys.path.insert(0, '${PIPELINE_DIR}'); import config; print($1)"; }
+PYTHON_EXEC="$(_cfg 'config.PYTHON_EXEC')"
+WORKING_DIR="$(_cfg 'config.WORKING_DIR')"
+CMDS_DIR="$(_cfg 'config.CMDS_DIR')"
+LOGS_DIR="$(_cfg 'config.LOGS_DIR')"
 
 mkdir -p "${LOGS_DIR}"
 
@@ -62,7 +67,7 @@ echo "Submitted step2 job:   ${STEP2_JID}  (waits for RFD3 ${RFD3_JID})"
 
 echo ""
 echo "Pipeline queued. The full chain will run automatically:"
-echo "  RFD3 (${RFD3_JID}) → step2 (${STEP2_JID}) → MPNN → step3 → RF3 → step4 → RF3-nol → step5"
+echo "  RFD3 (${RFD3_JID}) → step2 (${STEP2_JID}) → fill_fixed_residues → MPNN → step3 → RF3 → step4 → RF3-nol → step5"
 echo ""
 echo "Monitor with:"
 echo "  bjobs ${RFD3_JID} ${STEP2_JID}"

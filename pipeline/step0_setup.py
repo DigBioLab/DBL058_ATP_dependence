@@ -4,7 +4,7 @@ Step 0: Generate RFD3 config JSON and submit script.
 Run locally (not as an LSF job) before launching run_pipeline.sh.
 """
 import sys, os
-sys.path.insert(0, "/work3/s212001/ATP_dependent/pipeline")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)
@@ -64,4 +64,4 @@ print(f"Config: {json_f}")
 print(f"Cmds:   {cmds_file}")
 print(f"Script: {sh_file}")
 print("\nSetup complete. Launch the full pipeline with:")
-print("  bash /work3/s212001/ATP_dependent/run_pipeline.sh")
+print(f"  bash {os.path.join(os.path.dirname(config.PIPELINE_DIR), 'run_pipeline.sh')}")

@@ -4,7 +4,7 @@ Step 3 (LSF CPU job): Process MPNN outputs, generate RF3 cmds, submit RF3 + step
 Runs automatically after the MPNN job completes via LSF dependency.
 """
 import sys, os, glob, json, gzip, re, subprocess
-sys.path.insert(0, "/work3/s212001/ATP_dependent/pipeline")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)
