@@ -7,11 +7,11 @@ import os
 # ── Infrastructure ────────────────────────────────────────────────────────────
 PIPELINE_DIR   = os.path.dirname(os.path.abspath(__file__))
 SCRIPTS_DIR    = os.path.join(os.path.dirname(PIPELINE_DIR), "scripts")
-PYTHON_EXEC    = "/work3/s212001/miniforge3/envs/atp_project_env/bin/python3"
-ENZDES_SCRIPTS = "/work3/s212001/DBL_secrets/enzdes_pipeline-main"
+PYTHON_EXEC = "/zhome/e8/5/223639/miniforge3/envs/atp_project_env/bin/python3"
+ENZDES_SCRIPTS = "/work3/s253573/DBL_secrets/enzdes_pipeline-main"
 
 # ── Campaign ──────────────────────────────────────────────────────────────────
-user     = "s212001"
+user     = "s253573"
 family   = "atp_binding"
 target   = "conditioned_assembly"
 campaign = "8btg_D501"
