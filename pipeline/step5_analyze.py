@@ -43,12 +43,35 @@ df_merged = df_short.merge(
 )
 
 # ── 3. Apply ligand-dependence filter ────────────────────────────────────────
-df_final = df_merged[
-    (df_merged["best_iptm_pp_nol"] < config.IPTM_PP_NOL_CUTOFF) &
-    (df_merged["best_iptm_pp"]     >= config.IPTM_PP_CUTOFF)
-].copy()
-print(f"Ligand-dependent designs: {len(df_final)} / {len(df_merged)} "
-      f"(nol iptm_pp < {config.IPTM_PP_NOL_CUTOFF}, iptm_pp ≥ {config.IPTM_PP_CUTOFF})", flush=True)
+# A differential, not two independent thresholds. The original pair
+# (nol < 0.50, pp >= 0.20) admitted designs whose switch runs backwards: apo 0.45
+# with holo 0.25 satisfies both, yet that design assembles BETTER without ligand.
+# Configs that do not set IPTM_PP_DIFF_MIN keep the legacy behaviour.
+diff_min = getattr(config, "IPTM_PP_DIFF_MIN", None)
+
+df_merged["iptm_pp_gain"] = df_merged["best_iptm_pp"] - df_merged["best_iptm_pp_nol"]
+
+if diff_min is None:
+    df_final = df_merged[
+        (df_merged["best_iptm_pp_nol"] < config.IPTM_PP_NOL_CUTOFF) &
+        (df_merged["best_iptm_pp"]     >= config.IPTM_PP_CUTOFF)
+    ].copy()
+    print(f"Ligand-dependent designs: {len(df_final)} / {len(df_merged)} "
+          f"(nol iptm_pp < {config.IPTM_PP_NOL_CUTOFF}, "
+          f"iptm_pp ≥ {config.IPTM_PP_CUTOFF})  [legacy filter]", flush=True)
+else:
+    df_final = df_merged[
+        (df_merged["iptm_pp_gain"] >= diff_min) &
+        (df_merged["best_iptm_pp"] >= config.IPTM_PP_CUTOFF)
+    ].copy()
+    print(f"Ligand-dependent designs: {len(df_final)} / {len(df_merged)} "
+          f"(holo − apo ≥ {diff_min}, holo iptm_pp ≥ "
+          f"{config.IPTM_PP_CUTOFF})", flush=True)
+
+n_inverted = int((df_merged["iptm_pp_gain"] < 0).sum())
+if n_inverted:
+    print(f"WARNING: {n_inverted} / {len(df_merged)} designs assemble better WITHOUT "
+          f"ligand (negative iptm_pp gain)", flush=True)
 
 # ── 4. Save final CSV ─────────────────────────────────────────────────────────
 final_csv = f"{config.SHORTLISTED_DIR}/final_ligand_dependent.csv"
