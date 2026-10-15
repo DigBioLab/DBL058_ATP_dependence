@@ -2,7 +2,14 @@
 
 **Date:** 2026-10-15 · **Supersedes:** `ATP_dependent_scFv_plan.md`
 **Rev. 2026-10-15:** ATP-vs-ADP selectivity de-scoped by Darian. See §5.
-**Grounding:** PDB 1SY6 (measured, this session) · repo `DigBioLab/DBL058_ATP_dependence` @ HEAD (read, this session)
+**Rev. 2026-10-15:** scaffolded onto branch `feature/darwol-atp-gated-cd3-fv`; §2 bugs fixed. See §9.
+**Grounding:** PDB 1SY6 (measured) · repo `DigBioLab/DBL058_ATP_dependence` (read at `main`)
+
+**Branch status.** This plan and the code it describes live on
+`feature/darwol-atp-gated-cd3-fv`. Build the inputs with
+`python3 scripts/prepare_okt3_fv.py --out-dir inputs/`, then activate the campaign with
+`cp configs/okt3_atp_fv.py pipeline/config.py`. `inputs/` is gitignored and regenerates
+from 1SY6.
 
 Everything in §1 is measured from the deposited coordinates. §2 onwards separates
 measurement from inference and recommendation.
@@ -107,11 +114,15 @@ This confirms v1 §4.2 and now quantifies why.
 
 ---
 
-## 2. Two confirmed bugs in the repo, as applied to this campaign
+## 2. Three repo defects — confirmed, and fixed on this branch
 
-Both are real; I read the current code.
+All three were real. All three are now patched, backwards-compatibly: a config that
+does not opt in keeps the old behaviour, so the `8btg_D501` campaign on `main` is
+unaffected. **They remain present on `main`.**
 
-### 2.1 `step5_analyze.py` — the ligand-dependence filter admits inverted switches
+### 2.1 `step5_analyze.py` — the ligand-dependence filter admitted inverted switches
+
+*Fixed in `fb5b567`.*
 
 ```python
 df_final = df_merged[
@@ -121,30 +132,39 @@ df_final = df_merged[
 ```
 
 With apo = 0.45 and holo = 0.25, both conditions hold and the design passes, despite
-assembling *better without* ATP. Replace the independent thresholds with a differential:
+assembling *better without* ATP. The fix gates on the differential instead, and warns
+whenever any design shows a negative gain:
 
 ```python
+diff_min = getattr(config, "IPTM_PP_DIFF_MIN", None)   # None -> legacy behaviour
+df_merged["iptm_pp_gain"] = df_merged["best_iptm_pp"] - df_merged["best_iptm_pp_nol"]
 df_final = df_merged[
-    (df_merged["best_iptm_pp"] - df_merged["best_iptm_pp_nol"] >= 0.30) &
-    (df_merged["best_iptm_pp"] >= 0.60)
+    (df_merged["iptm_pp_gain"] >= diff_min) &
+    (df_merged["best_iptm_pp"] >= config.IPTM_PP_CUTOFF)
 ]
 ```
 
-### 2.2 `fill_fixed_residues.py` — will delete the paratope
+Set `IPTM_PP_DIFF_MIN = 0.30` in a config to opt in; `configs/okt3_atp_fv.py` already
+does. **Any shortlist produced under the old filter is suspect and worth re-scoring.**
 
-It rewrites the MPNN flag with motif residues only:
+### 2.2 `fill_fixed_residues.py` — would have deleted the paratope
+
+*Fixed in `1a78c4a`.* It rewrote the MPNN flag with motif residues only:
 
 ```python
 new_line = re.sub(r'--fixed_residues "[^"]*"', f'--fixed_residues "{fixed_res}"', line)
 ```
 
 With `MPNN_CHAINS_TO_DESIGN = "A,B"`, every non-motif position is designable, CDRs
-included. It must emit `motif_residues ∪ PARATOPE_5A` from the JSON in §1.2.
+included. It now unions the motif with `config.MPNN_EXTRA_FIXED_RESIDUES`, which
+`configs/okt3_atp_fv.py` populates from `PARATOPE_WIDE` (the 5.0 Å set, §1.2). When no
+extra set is configured the script now says so out loud rather than failing quietly.
 
-### 2.3 Chain-ID collision, minor but will bite
+### 2.3 Chain-ID collision, minor but would have bitten
 
-The RFD3 campaign uses chains A/B. In 1SY6, **A is CD3**. Rename on input: V<sub>H</sub>→A,
-V<sub>L</sub>→B, CD3→C. Do it in the input-prep step, not by hand.
+*Fixed in `56f2ff4`.* The RFD3 campaign uses chains A/B. In 1SY6, **A is CD3**.
+`scripts/prepare_okt3_fv.py` remaps on input: V<sub>H</sub>→A, V<sub>L</sub>→B, CD3→C,
+and drops C<sub>H</sub>1/C<sub>L</sub> in the same pass.
 
 ---
 
@@ -310,13 +330,36 @@ requirement.
 | 5 | *(new)* Stage or go direct | **Recommend staged**, S1→S3 (§3). |
 | 6 | *(new)* ATP vs ADP selectivity | **Closed — not required** (§5). Collapses a stage and loosens the affinity target. |
 
-## 9. Immediate next actions, in order
+## 9. Status and next actions
 
-1. **Pull holo/apo ipTM from the existing `8btg_D501` run.** Cheapest decision-relevant
-   data that exists. Everything downstream is conditional on it.
-2. Patch `step5_analyze.py` (§2.1) and re-score that run with the differential filter —
-   the current numbers may be inflated by the inverted-switch admission.
-3. Patch `fill_fixed_residues.py` to emit `motif ∪ paratope` (§2.2).
-4. Build the Fv input: strip C<sub>H</sub>1/C<sub>L</sub>, rename chains, emit `okt3_fv.cif`.
-5. Write `step6_multistate.py` for the five-state panel, CCD ligands.
-6. Only then run S2 design.
+### Done, on `feature/darwol-atp-gated-cd3-fv`
+
+- [x] Residue annotation from 1SY6: paratope, interface core, redesignable (§1.2)
+- [x] Fv inputs built — C<sub>H</sub>1/C<sub>L</sub> stripped, chains remapped (§2.3)
+- [x] Ligand-dependence filter fixed (§2.1)
+- [x] Paratope held fixed through LigandMPNN (§2.2)
+- [x] Campaign config `configs/okt3_atp_fv.py` — **unrun starting point**
+
+### Next, in order
+
+1. **Pull holo/apo ipTM from the existing `8btg_D501` run and re-score it with
+   `IPTM_PP_DIFF_MIN = 0.30`.** This is the cheapest decision-relevant data in the
+   project and everything downstream is conditional on it. If that campaign never
+   achieved real apo/holo separation, rebuilding the OKT3 interface is premature and
+   the plan should change rather than proceed.
+2. Decide murine vs humanised V-region (§6) **before** any sequence is committed. The
+   redesign target is framework, so rebasing afterwards invalidates the designs.
+3. Write `step6_multistate.py` for the multi-state panel — holo, apo and holo+CD3ε as
+   gates, `RF3_TRACKED_LIGANDS` recorded alongside (§5.1).
+4. Sweep `CONTIG` and `LENGTH`. Every value in the config is an unvalidated guess, and
+   segment lengths are the main lever on pocket volume.
+5. Run Route A and Route B (§4) side by side on a small batch before committing a
+   10³–10⁴ budget.
+6. Only then run S2 design at scale.
+
+### Known gaps
+
+- `PARTIAL_DIFFUSION` is declared in the config but the pipeline does not yet read it;
+  Route B needs wiring into `step0_setup.py`.
+- No `step6_multistate.py` exists yet. The five-state evaluation is specified, not built.
+- Nothing has been run. No design, no metric, no wet-lab result.
