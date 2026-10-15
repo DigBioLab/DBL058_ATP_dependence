@@ -34,6 +34,26 @@ def get_motif_residues(cifgz_path):
     order.sort()
     return " ".join(f"{c}{r}" for c, r in order)
 
+# Positions that must stay fixed in ADDITION to the diffusion motif. For an
+# antibody campaign this is the paratope: with MPNN_CHAINS_TO_DESIGN = "A,B",
+# every position outside the motif is designable, so LigandMPNN would otherwise
+# redesign the CDRs away. Campaigns that do not set it keep the old behaviour.
+EXTRA_FIXED = list(getattr(config, "MPNN_EXTRA_FIXED_RESIDUES", []))
+
+
+def _sort_key(tok):
+    """'A37' -> ('A', 37); tolerates anything unparseable by sorting it last."""
+    chain, num = tok[0], tok[1:]
+    return (chain, int(num)) if num.isdigit() else (chain, 10**9)
+
+
+def union_with_extra(motif_res):
+    """Merge motif residues with EXTRA_FIXED, de-duplicated and ordered."""
+    toks = set(motif_res.split()) if motif_res else set()
+    toks |= set(EXTRA_FIXED)
+    return " ".join(sorted(toks, key=_sort_key))
+
+
 with open(CMDS_FILE) as f:
     lines = [l.rstrip() for l in f if l.strip()]
 
@@ -50,7 +70,8 @@ for line in lines:
         new_lines.append(line)
         continue
 
-    fixed_res = get_motif_residues(cif_path)
+    motif_res = get_motif_residues(cif_path)
+    fixed_res = union_with_extra(motif_res)
     new_line = re.sub(r'--fixed_residues "[^"]*"', f'--fixed_residues "{fixed_res}"', line)
     new_lines.append(new_line)
     print(f"{os.path.basename(cif_path)}: {fixed_res}")
@@ -59,3 +80,10 @@ with open(CMDS_FILE, "w") as f:
     f.write("\n".join(new_lines) + "\n")
 
 print(f"\nDone. Updated {len(new_lines)} commands in mpnn.cmds")
+if EXTRA_FIXED:
+    print(f"Also held fixed in every command: {len(EXTRA_FIXED)} extra residues "
+          f"from config.MPNN_EXTRA_FIXED_RESIDUES")
+else:
+    print("No config.MPNN_EXTRA_FIXED_RESIDUES set — motif residues only. "
+          "If any chain being designed carries functional residues outside the "
+          "motif (e.g. an antibody paratope), they WILL be redesigned.")
