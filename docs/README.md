@@ -16,6 +16,7 @@ The machinery is shared; the constraints are not.
 | Path | Purpose |
 |---|---|
 | `docs/ATP_dependent_Fv_plan_v2.md` | The plan, grounded in measurements from PDB 1SY6 |
+| `docs/ATP_dependent_scFv_plan.md` | The superseded v1 plan, kept for provenance |
 | `scripts/prepare_okt3_fv.py` | Builds the Fv inputs and residue annotation from 1SY6 |
 | `configs/okt3_atp_fv.py` | Campaign config. Unvalidated starting point |
 

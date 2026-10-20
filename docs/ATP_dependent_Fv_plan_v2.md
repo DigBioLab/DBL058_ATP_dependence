@@ -1,6 +1,6 @@
 # ATP-Gated Anti-CD3ε Fv — Plan v2
 
-**Date:** 2026-10-15 · **Supersedes:** `ATP_dependent_scFv_plan.md`
+**Date:** 2026-10-15 · **Supersedes:** [`ATP_dependent_scFv_plan.md`](ATP_dependent_scFv_plan.md)
 **Rev. 2026-10-15:** ATP-vs-ADP selectivity de-scoped by Darian. See §5.
 **Rev. 2026-10-15:** scaffolded onto branch `feature/darwol-atp-gated-cd3-fv`; §2 bugs fixed. See §9.
 **Grounding:** PDB 1SY6 (measured) · repo `DigBioLab/DBL058_ATP_dependence` (read at `main`)
