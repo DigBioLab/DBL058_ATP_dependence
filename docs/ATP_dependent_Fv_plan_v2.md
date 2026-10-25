@@ -3,6 +3,7 @@
 **Date:** 2026-10-15 · **Supersedes:** [`ATP_dependent_scFv_plan.md`](ATP_dependent_scFv_plan.md)
 **Rev. 2026-10-15:** ATP-vs-ADP selectivity de-scoped by Darian. See §5.
 **Rev. 2026-10-15:** scaffolded onto branch `feature/darwol-atp-gated-cd3-fv`; §2 bugs fixed. See §9.
+**Rev. 2026-10-21:** S1 re-scored against the corrected §2.1 filter. **Gate met.** See §9.1.
 **Grounding:** PDB 1SY6 (measured) · repo `DigBioLab/DBL058_ATP_dependence` (read at `main`)
 
 **Branch status.** This plan and the code it describes live on
@@ -191,9 +192,11 @@ structural change from v1.
 
 Three stages, not four: the former selectivity stage collapses into S1 (§5).
 S1 is largely the existing `8btg_D501` campaign — `top9fixed_structures/` already exists.
-**Before writing any new code, pull the realised holo/apo ipTM distribution from that
-run.** If it never separated, S2 is premature and the whole plan should change. That is
-the cheapest informative action available and it should happen first.
+
+**Done, 2026-10-21 — the computational half of the S1 gate is met.** The realised
+holo/apo distribution has been pulled and re-scored; 230 designs clear
+`gain ≥ 0.30, holo ≥ 0.60` against a required 10. The kill condition did not fire, so
+S2 is not premature. Numbers, caveats and the wet-lab half of the gate in §9.1.
 
 ---
 
@@ -339,27 +342,78 @@ requirement.
 - [x] Ligand-dependence filter fixed (§2.1)
 - [x] Paratope held fixed through LigandMPNN (§2.2)
 - [x] Campaign config `configs/okt3_atp_fv.py` — **unrun starting point**
+- [x] S1 holo/apo distribution pulled and re-scored under `IPTM_PP_DIFF_MIN = 0.30` (§9.1)
+
+### 9.1 S1 re-scoring result — gate met
+
+*Added 2026-10-21. Source: `/work3/s212001/ATP_dependent/ALL_DESIGNS_OVERVIEW.csv`
+(9,326 unique designs; columns `iptm_pp_wl` = holo, `iptm_pp_nol` = apo).*
+
+**Measured.** 569 unique designs have both states scored. Over that subset:
+
+| | holo | apo | gain = holo − apo |
+|---|---|---|---|
+| median | 0.895 | 0.524 | **+0.278** |
+| mean | 0.865 | 0.596 | +0.269 |
+| p90 | — | — | +0.516 |
+| max | 0.980 | 0.962 | +0.647 |
+
+Inverted switches (gain < 0): **4 of 569 (0.6 %)**.
+
+**Confirmed — the S1 computational gate is met.** 230 unique designs clear
+`gain ≥ 0.30` AND `holo ≥ 0.60`, against a required ≥10. Apo/holo separation is real,
+so §3's kill condition does not fire and S2 is not premature on this evidence.
+The second half of the S1 gate — ≥1 confirmed wet-lab — is unaddressed; this file
+cannot speak to it.
+
+**The §2.1 bug was real, and wrong in both directions.** Old filter
+(`apo < 0.50 AND holo ≥ 0.60`) vs corrected (`gain ≥ 0.30 AND holo ≥ 0.60`):
+
+- **41 designs admitted by the old filter fail the corrected one** — weak switches
+  passing on a low apo score alone, e.g. holo 0.647 / apo 0.465 / gain +0.18.
+- **48 good designs were silently discarded** by the old filter: large gains, but
+  apo ≥ 0.50. The misses are the larger loss, and were not anticipated in §2.1.
+- 211 pass both.
+
+**The ordered shortlist survives.** 40 of 41 unique shortlisted/ordered designs pass
+the corrected filter. The single failure,
+`rank6_ATP_binding_8btg_..._3_model_0_1_model_0`, has gain **+0.2988** — 0.0012 below
+threshold, i.e. noise. No re-ordering is justified by this. §2.1's warning that any
+old-filter shortlist is "suspect" was, for this shortlist, too conservative.
+
+**Two caveats, both load-bearing.**
+
+- **Coverage is 6 %.** Only 569 of 9,326 designs have apo scored; the
+  `partial_diffusion_wl` stage is 8,800 designs with 220 scored. The scored subset is
+  enriched for designs already selected for re-evaluation, so **+0.278 median gain is
+  not a campaign-wide figure** and must not be quoted as one. The honest statement is
+  that separation is real among designs that were worth re-scoring.
+- **Campaign identity is an inference, not a fact.** The file carries no `8btg_D501`
+  label. It was matched to that campaign because design IDs contain `ATP_binding_8btg`
+  and its `top9fixed` / `top6naive` stages correspond to the repo's
+  `top9fixed_structures/` and `top6naive_for_download/`. Strong match, unverified.
 
 ### Next, in order
 
-1. **Pull holo/apo ipTM from the existing `8btg_D501` run and re-score it with
-   `IPTM_PP_DIFF_MIN = 0.30`.** This is the cheapest decision-relevant data in the
-   project and everything downstream is conditional on it. If that campaign never
-   achieved real apo/holo separation, rebuilding the OKT3 interface is premature and
-   the plan should change rather than proceed.
-2. Decide murine vs humanised V-region (§6) **before** any sequence is committed. The
+1. Decide murine vs humanised V-region (§6) **before** any sequence is committed. The
    redesign target is framework, so rebasing afterwards invalidates the designs.
-3. Write `step6_multistate.py` for the multi-state panel — holo, apo and holo+CD3ε as
+2. Write `step6_multistate.py` for the multi-state panel — holo, apo and holo+CD3ε as
    gates, `RF3_TRACKED_LIGANDS` recorded alongside (§5.1).
-4. Sweep `CONTIG` and `LENGTH`. Every value in the config is an unvalidated guess, and
+3. Sweep `CONTIG` and `LENGTH`. Every value in the config is an unvalidated guess, and
    segment lengths are the main lever on pocket volume.
-5. Run Route A and Route B (§4) side by side on a small batch before committing a
+4. Run Route A and Route B (§4) side by side on a small batch before committing a
    10³–10⁴ budget.
-6. Only then run S2 design at scale.
+5. Only then run S2 design at scale.
+
+Optional, and cheap relative to its value: score apo for the 8,800 unscored
+`partial_diffusion_wl` designs. Until that exists, every campaign-wide claim about
+switch behaviour rests on a 6 % sample (§9.1).
 
 ### Known gaps
 
 - `PARTIAL_DIFFUSION` is declared in the config but the pipeline does not yet read it;
   Route B needs wiring into `step0_setup.py`.
 - No `step6_multistate.py` exists yet. The five-state evaluation is specified, not built.
-- Nothing has been run. No design, no metric, no wet-lab result.
+- Nothing has been run **for the OKT3 campaign**. No design, no metric, no wet-lab
+  result. §9.1 re-scores the prior `8btg`-lineage campaign; it says nothing about OKT3.
+- Apo is scored for only 6 % of that prior campaign (§9.1).

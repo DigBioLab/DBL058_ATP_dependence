@@ -25,7 +25,10 @@ PIPELINE_DIR   = os.path.dirname(os.path.abspath(__file__))
 REPO_DIR       = os.path.dirname(PIPELINE_DIR)
 SCRIPTS_DIR    = os.path.join(REPO_DIR, "scripts")
 PYTHON_EXEC    = os.environ.get("ATP_PYTHON_EXEC", "python3")
-ENZDES_SCRIPTS = os.environ.get("ENZDES_SCRIPTS", "")
+# jupyter_utils / rf3_sm_metrics live here, imported via sys.path by steps 0,3,4,5,6.
+# An empty default made `import jupyter_utils` fail with a confusing traceback.
+ENZDES_SCRIPTS = os.environ.get(
+    "ENZDES_SCRIPTS", "/work3/s212001/DBL_secrets/enzdes_pipeline-main")
 
 # ── Campaign ──────────────────────────────────────────────────────────────────
 user     = os.environ.get("DBL_USER", "s212001")
@@ -77,7 +80,14 @@ PARATOPE_RESIDUES = _to_design_chain(_SETS["PARATOPE_WIDE"])
 REDESIGNABLE_RESIDUES = _to_design_chain(_SETS["REDESIGNABLE"])
 
 # ── RFD3 parameters ───────────────────────────────────────────────────────────
-INPUT_PDB = f"{WORKING_DIR}/inputs/okt3_fv.cif"
+# Built by scripts/prepare_okt3_fv.py into the repo's inputs/, not WORKING_DIR —
+# same convention as RESIDUE_SETS_JSON above. inputs/ is gitignored and regenerates.
+#
+# MUST be the ATP-seeded file, for BOTH routes. RFD3 extracts the ligand from the
+# input structure rather than fetching it from the CCD, so an apo input fails with
+# "Invalid contig format: 'ATP'". Regenerate with:
+#     python3 scripts/prepare_okt3_fv.py --out-dir inputs/ --with-atp
+INPUT_PDB = os.path.join(REPO_DIR, "inputs", "okt3_fv_atp.cif")
 DIALECT   = 2
 
 # A = VH (1-113), B = VL (1-107). Unindexed length ranges replace the FR2 ledge and
@@ -101,10 +111,27 @@ RFD3_CKPT            = "/dtu/projects/dbl/foundry/ckpt/rfd3_latest.ckpt"
 RFD3_DIFFUSION_BATCH = 10
 RFD3_N_BATCHES       = 100   # TUNE: negative design has a low pass rate; budget 1e3-1e4
 
-# Route B alternative to hard inpainting: low-noise partial diffusion of the whole Fv
-# with ATP present. Expected to open a cavity more reliably than segment replacement.
-PARTIAL_DIFFUSION      = False
-PARTIAL_DIFFUSION_NOISE = 0.3   # TUNE
+# ── Route B: partial diffusion ───────────────────────────────────────────────
+# Low-noise partial diffusion of the whole Fv with ATP present. Expected to open
+# a cavity more reliably than segment replacement, because the deformation needed
+# is distributed rather than local (plan section 4).
+#
+# When True, step0_setup.py ignores CONTIG/LENGTH — RFD3 skips contig sampling
+# under partial diffusion — and instead unindexes REDESIGNABLE_RESIDUES while
+# pinning PARATOPE_RESIDUES. One RFD3 job per value in PARTIAL_T_SWEEP.
+PARTIAL_DIFFUSION = False
+
+# partial_t is the standard deviation of re-added noise in ANGSTROMS, not a 0-1
+# fraction. RFD3 recommends <= 15 and says to start small and raise, because the
+# response is nonlinear. The previous value here (0.3) was a near no-op.
+PARTIAL_T_SWEEP = [2.0, 3.0, 4.0, 5.0]
+
+# ATP MOBILITY IS NOT CONFIGURABLE under partial diffusion in this RFD3 build.
+# input_parsing.py subsets the input to protein (line ~614) before applying
+# select_fixed_atoms, then re-appends the ligand with
+# is_motif_atom_with_fixed_coord hard-coded to 1 (line ~678). ATP is therefore
+# always rigid here. A rigid-vs-free comparison has to come from Route A, or
+# from patching RFD3.
 
 # ── MPNN parameters ───────────────────────────────────────────────────────────
 MPNN_SEED             = 42
@@ -126,10 +153,33 @@ RF3_CCD_LIGAND = True      # CCD codes are simpler than an SDF for a nucleotide 
 RF3_SDF_PATH   = None
 RF3_SMILES     = None
 
+RF3_QUEUE = "cabl40s"   # GPU queue for RF3 array jobs
+
 # Multi-state panel. Only ATP gates; the rest are recorded for context.
 # ADP cross-reactivity is acceptable by design decision (plan section 5).
 RF3_GATING_LIGAND   = "ATP"
-RF3_TRACKED_LIGANDS = ["ADP", "AMP", "ADN", "GTP"]   # recorded, not gated
+# DEFERRED 2026-10-21: the tracked nucleotide panel is out of scope for now.
+# step6_multistate.py scores three states only — holo, apo, holo+CD3. Left
+# declared so re-enabling it is a code change in one place, not a config hunt.
+RF3_TRACKED_LIGANDS = []   # was ["ADP", "AMP", "ADN", "GTP"]
+
+# ── Third gating state: holo + CD3 (step6_multistate.py) ─────────────────────
+# NOTE ON NAMING: the plan calls this state "holo+CD3e", but 1SY6 and therefore
+# inputs/okt3_fv_cd3.cif contain the CD3 gamma-epsilon ectodomain as a single
+# chain joined by a 26-residue linker (plan section 1). What is folded here is
+# CD3ge, not CD3e alone.
+CD3_REF_CIF       = os.path.join(REPO_DIR, "inputs", "okt3_fv_cd3.cif")
+CD3_SOURCE_CHAIN  = "C"    # chain holding CD3 in the reference CIF
+CD3_CHAIN_ID      = "C"    # chain ID given to CD3 in the RF3 input
+CD3_WT_REFERENCE  = True   # also fold wild-type OKT3 Fv + CD3 as a baseline
+
+# TUNE — both are guesses until the reference run reports a wild-type value.
+# CD3_IPSAE_MIN is an absolute floor; CD3_RETENTION_MIN is the fraction of the
+# wild-type value a design must keep, and is only applied if the reference ran.
+CD3_IPSAE_MIN     = 0.30
+CD3_RETENTION_MIN = 0.70
+
+RUN_STEP6_MULTISTATE = True   # step5 chains step6 instead of being terminal
 
 # ── Shortlisting thresholds ───────────────────────────────────────────────────
 IPTM_PL_CUTOFF = 0.80   # protein-ligand, holo

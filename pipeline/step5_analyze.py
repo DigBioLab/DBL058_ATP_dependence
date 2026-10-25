@@ -106,5 +106,31 @@ top = df_final[[c for c in top_cols if c in df_final.columns]].sort_values(
     "best_iptm_pl", ascending=False)
 print(f"\nTop {min(20, len(top))} ligand-dependent designs:", flush=True)
 print(top.head(20).to_string(index=False), flush=True)
+
+# ── 7. Optionally chain step 6 (third gating state: holo + CD3) ──────────────
+# Configs that do not opt in keep step5 terminal, so the 8btg_D501 campaign is
+# unaffected. Requires CD3_REF_CIF and the CD3_* thresholds in config.
+if getattr(config, "RUN_STEP6_MULTISTATE", False):
+    import re, subprocess
+    if len(df_final) == 0:
+        print("\nSkipping step6: no designs survived the ligand-dependence filter.",
+              flush=True)
+    else:
+        step6 = f"{config.PIPELINE_DIR}/step6_multistate.py"
+        cmd = (
+            f'bsub -J step6_generate -q hpc -n 2 -W 01:00 '
+            f'-R "rusage[mem=8GB]" -R "span[hosts=1]" '
+            f'-o {config.LOGS_DIR}/step6_generate_%J.out '
+            f'-e {config.LOGS_DIR}/step6_generate_%J.err '
+            f'"{config.PYTHON_EXEC} {step6} --phase generate"'
+        )
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        print(r.stdout.strip(), flush=True)
+        if r.returncode != 0:
+            print(f"WARNING: could not submit step6: {r.stderr}", flush=True)
+        else:
+            m = re.search(r"Job <(\d+)>", r.stdout)
+            print(f"Submitted step6 job: {m.group(1) if m else '?'}", flush=True)
+
 print("\n=== Pipeline complete ===", flush=True)
 print(f"Final results: {final_csv}", flush=True)

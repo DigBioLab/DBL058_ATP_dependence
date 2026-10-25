@@ -142,6 +142,185 @@ def write_cif(path, atoms, cols, data_name):
     print(f"wrote {path}  ({len(atoms)} atoms)")
 
 
+# ── ATP seeding (Route B) ────────────────────────────────────────────────────
+# RFD3 extracts a ligand from the *input structure*; it does not fetch it from
+# the CCD (rfd3/utils/inference.py, fetch_mask_from_component). Partial
+# diffusion therefore needs ATP already placed in the input, even though
+# section 1.3 of the plan measured that no pocket exists yet to place it in.
+#
+# The seed is deliberately crude: ATP is parked over the shallow groove section
+# 1.3 identified, just clear of the surface, and partial diffusion is expected
+# to excavate around it. It is a starting point, not a docked pose.
+CCD_ATP_URL = "https://files.rcsb.org/ligands/download/ATP.cif"
+
+# Groove lining from plan section 1.3, in design-chain numbering (H->A, L->B).
+GROOVE_RESIDUES = ["A39", "A43", "A93", "A95", "B37", "B38", "B41", "B42", "B86"]
+
+ATP_CLASH_MIN = 3.2     # Angstrom; closest allowed ATP-protein heavy-atom contact
+ATP_PROBE_MAX = 14.0    # how far out along the groove normal to search
+ATP_N_ROT = 60          # random orientations tried per offset
+
+
+def fetch_atp_template(path):
+    """Ideal-geometry ATP heavy atoms from the RCSB chemical component dictionary."""
+    if not os.path.exists(path):
+        print(f"downloading {CCD_ATP_URL}")
+        with urllib.request.urlopen(CCD_ATP_URL, timeout=60) as r, open(path, "wb") as f:
+            f.write(r.read())
+
+    cols, rows, in_loop, reading = [], [], False, False
+    with open(path) as fh:
+        for line in fh:
+            s = line.strip()
+            if s.startswith("_chem_comp_atom."):
+                cols.append(s.split(".", 1)[1]); in_loop = True; continue
+            if in_loop:
+                if s.startswith("#") or not s:
+                    if reading:
+                        break
+                    continue
+                parts = s.split()
+                if len(parts) == len(cols):
+                    rows.append(dict(zip(cols, parts))); reading = True
+
+    def pick(d, *names):
+        for n in names:
+            v = d.get(n)
+            if v not in (None, "?", "."):
+                return v
+        return None
+
+    atoms = []
+    for d in rows:
+        if d.get("type_symbol") == "H":
+            continue
+        x = pick(d, "model_Cartn_x", "pdbx_model_Cartn_x_ideal")
+        y = pick(d, "model_Cartn_y", "pdbx_model_Cartn_y_ideal")
+        z = pick(d, "model_Cartn_z", "pdbx_model_Cartn_z_ideal")
+        if None in (x, y, z):
+            continue
+        atoms.append({"name": d["atom_id"], "element": d["type_symbol"],
+                      "xyz": (float(x), float(y), float(z))})
+    if len(atoms) != 31:
+        print(f"WARNING: ATP template has {len(atoms)} heavy atoms, expected 31")
+    return atoms
+
+
+def _centroid(points):
+    n = len(points)
+    return tuple(sum(p[i] for p in points) / n for i in range(3))
+
+
+def _rotation(a, b, c):
+    """Rotation matrix from three Euler angles."""
+    ca, sa, cb, sb, cc, sc = (math.cos(a), math.sin(a), math.cos(b),
+                              math.sin(b), math.cos(c), math.sin(c))
+    return (
+        (cb * cc, -cb * sc, sb),
+        (sa * sb * cc + ca * sc, -sa * sb * sc + ca * cc, -sa * cb),
+        (-ca * sb * cc + sa * sc, ca * sb * sc + sa * cc, ca * cb),
+    )
+
+
+def place_atp(fv_atoms, template, seed=0, clash_min=None, force_offset=None):
+    """Park ATP over the groove: outward along the groove normal, closest
+    non-clashing offset, best of ATP_N_ROT orientations by contact count.
+
+    clash_min   override ATP_CLASH_MIN. Lowering it seeds ATP deeper, at the
+                cost of starting from a clash that diffusion must resolve.
+    force_offset  pin the offset along the groove normal instead of scanning
+                for the first clear one; use with a low clash_min to seed
+                inside the groove.
+
+    Returns (placed_atoms, report_dict).
+    """
+    clash_min = ATP_CLASH_MIN if clash_min is None else clash_min
+    import random
+    rng = random.Random(seed)
+
+    prot = [xyz(a) for a in fv_atoms]
+    groove = [xyz(a) for a in fv_atoms
+              if a["auth_asym_id"] + a["auth_seq_id"] in GROOVE_RESIDUES]
+    if not groove:
+        sys.exit("no groove-lining atoms matched; check GROOVE_RESIDUES")
+
+    G, P = _centroid(groove), _centroid(prot)
+    u = tuple(G[i] - P[i] for i in range(3))
+    norm = math.sqrt(sum(v * v for v in u)) or 1.0
+    u = tuple(v / norm for v in u)
+
+    tpl = [a["xyz"] for a in template]
+    tpl_c = _centroid(tpl)
+    tpl = [tuple(p[i] - tpl_c[i] for i in range(3)) for p in tpl]
+
+    rots = [_rotation(rng.uniform(0, 2 * math.pi),
+                      rng.uniform(0, 2 * math.pi),
+                      rng.uniform(0, 2 * math.pi)) for _ in range(ATP_N_ROT)]
+
+    best = None
+    fallback = None                    # best pose ignoring the clash floor
+    offset = 0.0 if force_offset is None else force_offset
+    while offset <= ATP_PROBE_MAX:
+        centre = tuple(G[i] + offset * u[i] for i in range(3))
+        for R in rots:
+            pose = [tuple(centre[i] + sum(R[i][j] * p[j] for j in range(3))
+                          for i in range(3)) for p in tpl]
+            dmin, contacts = 1e9, 0
+            for q in pose:
+                for r in prot:
+                    d2 = ((q[0]-r[0])**2 + (q[1]-r[1])**2 + (q[2]-r[2])**2)
+                    if d2 < dmin:
+                        dmin = d2
+                    if d2 < 25.0:      # 5 A contact shell
+                        contacts += 1
+            dmin = math.sqrt(dmin)
+            if fallback is None or dmin > fallback[1]:
+                fallback = (contacts, dmin, offset, pose)
+            if dmin >= clash_min and (best is None or contacts > best[0]):
+                best = (contacts, dmin, offset, pose)
+        if best is not None or force_offset is not None:
+            break                      # first offset that clears; most buried
+        offset += 0.5
+
+    if best is None:
+        if force_offset is None:
+            sys.exit(f"could not place ATP without a clash below {ATP_PROBE_MAX} A")
+        # Pinned offset with no clash-free orientation: take the least-clashing
+        # pose and let diffusion resolve it. This is the point of a deep seed.
+        best = fallback
+        print(f"  note: no orientation clears {clash_min} A at offset "
+              f"{force_offset}; seeding with a deliberate clash")
+
+    contacts, dmin, offset, pose = best
+    placed = [{"name": t["name"], "element": t["element"], "xyz": p}
+              for t, p in zip(template, pose)]
+    return placed, {"groove_centroid": [round(v, 2) for v in G],
+                    "offset_along_normal": round(offset, 2),
+                    "min_protein_distance": round(dmin, 2),
+                    "contacts_within_5A": contacts}
+
+
+def atp_cif_rows(placed, cols, chain="L", entity="9"):
+    """ATP heavy atoms as _atom_site dicts matching the Fv CIF columns."""
+    rows = []
+    for i, a in enumerate(placed, 1):
+        x, y, z = a["xyz"]
+        d = {c: "?" for c in cols}
+        d.update({
+            "group_PDB": "HETATM", "id": str(i), "type_symbol": a["element"],
+            "label_atom_id": a["name"], "label_alt_id": ".", "label_comp_id": "ATP",
+            "label_asym_id": chain, "label_entity_id": entity, "label_seq_id": ".",
+            "pdbx_PDB_ins_code": "?",
+            "Cartn_x": f"{x:.3f}", "Cartn_y": f"{y:.3f}", "Cartn_z": f"{z:.3f}",
+            "occupancy": "1.00", "B_iso_or_equiv": "30.00",
+            "pdbx_formal_charge": "?", "auth_seq_id": "1", "auth_comp_id": "ATP",
+            "auth_asym_id": chain, "auth_atom_id": a["name"],
+            "pdbx_PDB_model_num": "1",
+        })
+        rows.append(d)
+    return rows
+
+
 def residue_sets(atoms):
     """Annotate VH/VL residues by distance to CD3 and to the partner domain."""
     by_chain = defaultdict(list)
@@ -201,6 +380,18 @@ def main():
                     help="output directory (default: inputs/, gitignored)")
     ap.add_argument("--cif", default=None,
                     help="existing 1SY6 mmCIF; downloaded to <out-dir>/1sy6.cif if omitted")
+    ap.add_argument("--with-atp", action="store_true",
+                    help="also write okt3_fv_atp.cif with ATP seeded over the "
+                         "section-1.3 groove (required for Route B partial diffusion)")
+    ap.add_argument("--atp-offset", type=float, default=None,
+                    help="pin the ATP offset along the groove normal (A) instead "
+                         "of taking the first clash-free one; use with "
+                         "--atp-clash-min to seed deep inside the groove")
+    ap.add_argument("--atp-clash-min", type=float, default=None,
+                    help=f"minimum ATP-protein contact (default {ATP_CLASH_MIN} A); "
+                         "lower it to allow a deliberately clashing deep seed")
+    ap.add_argument("--atp-out", default="okt3_fv_atp.cif",
+                    help="filename for the ATP-seeded structure")
     args = ap.parse_args()
 
     os.makedirs(args.out_dir, exist_ok=True)
@@ -216,6 +407,20 @@ def main():
 
     write_cif(os.path.join(args.out_dir, "okt3_fv_cd3.cif"), fv_cd3, cols, "OKT3_FV_CD3")
     write_cif(os.path.join(args.out_dir, "okt3_fv.cif"), fv_only, cols, "OKT3_FV_APO")
+
+    if args.with_atp:
+        template = fetch_atp_template(os.path.join(args.out_dir, "ATP_ccd.cif"))
+        placed, report = place_atp(fv_only, template,
+                                   clash_min=args.atp_clash_min,
+                                   force_offset=args.atp_offset)
+        write_cif(os.path.join(args.out_dir, args.atp_out),
+                  fv_only + atp_cif_rows(placed, cols), cols, "OKT3_FV_ATP")
+        print("ATP seed placement:")
+        for k, v in report.items():
+            print(f"  {k:<22} {v}")
+        stem = os.path.splitext(args.atp_out)[0]
+        with open(os.path.join(args.out_dir, f"{stem}_placement.json"), "w") as f:
+            json.dump(report, f, indent=1)
 
     sets = residue_sets(fv_cd3)
     json_path = os.path.join(args.out_dir, "okt3_1sy6_residue_sets.json")
