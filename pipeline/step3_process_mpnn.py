@@ -6,6 +6,7 @@ Runs automatically after the MPNN job completes via LSF dependency.
 import sys, os, glob, json, gzip, re, subprocess
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
+import submit_utils
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)
 import jupyter_utils
@@ -102,7 +103,7 @@ print(f"Generated {n_task} RF3 commands across {len(fasta_files)} FASTA files.",
 if n_task == 0:
     sys.exit("ERROR: 0 RF3 commands generated.")
 
-jupyter_utils.make_sub_script(
+submit_utils.make_sub_script(
     cmds=rf3_cmds, n_task=n_task, mem="10GB", time_limit="4:00",
     group_size=10, cores=4, gpu="num=1:mode=exclusive_process",
     queue="cabl40s", job_name="rf3",

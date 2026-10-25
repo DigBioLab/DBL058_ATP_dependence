@@ -6,6 +6,7 @@ Runs automatically after the RFD3 job completes via LSF dependency.
 import sys, os, glob, json, csv, gzip, re, subprocess
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
+import submit_utils
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)
 import jupyter_utils
@@ -96,7 +97,7 @@ fill_script = os.path.join(config.SCRIPTS_DIR, "fill_fixed_residues.py")
 subprocess.run([config.PYTHON_EXEC, fill_script, mpnn_cmds], check=True)
 print("Fixed residues filled via fill_fixed_residues.py", flush=True)
 
-jupyter_utils.make_sub_script(
+submit_utils.make_sub_script(
     mpnn_cmds, n_task=n_tasks, group_size=10, mem="10G", queue="hpc",
     job_name="mpnn", cores=4, time_limit="2:00",
     python_path="/dtu/projects/dbl/LigandMPNN/25.3.1-0/",
