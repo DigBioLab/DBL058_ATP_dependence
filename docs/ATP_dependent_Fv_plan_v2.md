@@ -4,6 +4,8 @@
 **Rev. 2026-10-15:** ATP-vs-ADP selectivity de-scoped by Darian. See §5.
 **Rev. 2026-10-15:** scaffolded onto branch `feature/darwol-atp-gated-cd3-fv`; §2 bugs fixed. See §9.
 **Rev. 2026-10-21:** S1 re-scored against the corrected §2.1 filter. **Gate met.** See §9.1.
+**Rev. 2026-10-25:** S2 excavation tested across 317 designs. **No ATP-scale pocket
+formed; the S2 gate fires.** §4 is superseded by §9.2 — do not run it as written.
 **Grounding:** PDB 1SY6 (measured) · repo `DigBioLab/DBL058_ATP_dependence` (read at `main`)
 
 **Branch status.** This plan and the code it describes live on
@@ -187,7 +189,7 @@ structural change from v1.
 | Stage | Question | Antigen involved? | Gate to proceed |
 |---|---|---|---|
 | **S1** | Can this pipeline produce *any* nucleotide-gated two-chain assembly, backbone free? | No | ≥10 designs with holo−apo ipTM ≥0.3, and ≥1 confirmed wet-lab |
-| **S2** | Can the validated interface be rebuilt into the OKT3 Fv base? | Yes | CDR RMSD <1.0 Å, CD3 ipTM retained |
+| **S2** | Can the validated interface be rebuilt into the OKT3 Fv base? | Yes | CDR RMSD <1.0 Å, CD3 ipTM retained — **GATE FIRES, see §9.2** |
 | **S3** | Format, developability, function | Yes | Jurkat-NFAT ATP dependence |
 
 Three stages, not four: the former selectivity stage collapses into S1 (§5).
@@ -201,6 +203,14 @@ S2 is not premature. Numbers, caveats and the wet-lab half of the gate in §9.1.
 ---
 
 ## 4. Revised design strategy for S2 (replaces v1 Phase 2)
+
+> **SUPERSEDED, 2026-10-25.** Both routes below were implemented and tested.
+> Neither excavates an ATP-scale pocket: 0 of 317 designs exceeded 200 Å³ of
+> enclosed cavity against a ~350–400 Å³ requirement, and Route A proved
+> *substantially worse* than Route B rather than merely worse. The section is
+> kept because its reasoning is still sound and its contig is reused elsewhere,
+> but **do not run it as the S2 strategy**. See §9.2 and
+> [`results_excavation_options.md`](results_excavation_options.md).
 
 Drop docking-based pocket siting. Two generative routes, run in parallel.
 
@@ -328,10 +338,12 @@ requirement.
 |---|---|---|
 | 1 | Anti-CD3ε clone | **Closed — OKT3**, by availability of 1SY6. Open sub-question: murine vs humanised V-region (§6). |
 | 2 | Molecular format | **Narrowed — Fv for design and screening** (§1.4). Final therapeutic format still open. |
-| 3 | Pocket location | **Narrowed — interface base**, the 18-residue redesignable set (§1.2). Interface core is ruled out: it is paratope-proximal. |
+| 3 | Pocket location | **Reopened 2026-10-25.** The 18-residue interface base was tested and does not yield a pocket (§9.2). Either a larger region must be rebuilt, or the site does not belong in this interface at all. |
 | 4 | One ATP site or two | **Recommend one.** §1.3 shows accommodating even one requires real excavation. |
 | 5 | *(new)* Stage or go direct | **Recommend staged**, S1→S3 (§3). |
 | 6 | *(new)* ATP vs ADP selectivity | **Closed — not required** (§5). Collapses a stage and loosens the affinity target. |
+| 7 | *(new)* ATP rigid or mobile during excavation | **Closed — does not matter** (§9.2). Tested with a patched RFD3; mobile ATP moved several Å and changed nothing. |
+| 8 | *(new)* Excavate the Fv, or fuse a validated S1 switch to it | **OPEN, and now the decision that matters.** §9.2 argues excavation has been given a fair test and failed. |
 
 ## 9. Status and next actions
 
@@ -393,27 +405,91 @@ old-filter shortlist is "suspect" was, for this shortlist, too conservative.
   and its `top9fixed` / `top6naive` stages correspond to the repo's
   `top9fixed_structures/` and `top6naive_for_download/`. Strong match, unverified.
 
+### 9.2 S2 excavation result — gate fires
+
+*Added 2026-10-25. Full write-up:*
+[`results_route_b_smoke.md`](results_route_b_smoke.md) *and*
+[`results_excavation_options.md`](results_excavation_options.md).
+
+**Measured.** 317 designs across every variable reachable without changing the
+problem setup: `partial_t` 2–15 Å, shallow and deep ATP seeds, rigid and mobile
+ligand, Route A and Route B. Cavity volumes by the §1.3 method, reimplemented as
+[`scripts/cavity_scan.py`](../scripts/cavity_scan.py).
+
+| | largest cavity @≥80 % | @≥90 % |
+|---|---|---|
+| seed structure (baseline) | 33 Å³ | 1 Å³ |
+| best single design, all arms | 58 Å³ | 9 Å³ |
+| arm means, all 13 arms | 2–22 Å³ | 0.6–5.1 Å³ |
+| **ATP requires** | **~350–400 Å³** | — |
+
+- Designs ≥300 Å³ at ≥80 %: **0 / 237 scanned**. ≥200 Å³: **0 / 237**.
+- Most arms sit *below* the starting structure. Partial diffusion tightened the
+  interface rather than opening it.
+
+**Three sub-results that close open questions.**
+
+1. **Ligand mobility does not matter** (decision 7). Stock RFD3 cannot free a
+   ligand under partial diffusion; a patched copy can. The freed ATP provably
+   moved — ATP-to-paratope distance 31.20 Å (sd 0.00) rigid vs 27.08 Å (sd 0.64)
+   mobile — and cavity volumes were unchanged.
+2. **Route A is much worse than Route B**, not marginally: ≥70 % volume collapses
+   from ~150 Å³ to 22 Å³. §4 predicted the ordering; the magnitude is new. Route A
+   is not a fallback.
+3. **`partial_t` has a usable ceiling near 12 Å**, where RFD3's own motif-RMSD
+   assertion fails (one unindexed token drifted 9.6 Å). Not a sharp boundary —
+   pt15 completed.
+
+**Therefore the S2 gate in §3 fires.** The §4 strategy does not rebuild an
+ATP site into this interface and should not be scaled up.
+
+**Inference, not established.** The one factor held constant across all 13 arms
+was *how much protein could move*: 18 redesignable residues, 19 paratope residues
+pinned, throughout. A 400 Å³ void may simply require rebuilding more than 18
+residues. This is the obvious next test and it has not been run.
+
+**Scope.** This measures cavity formation only. Nothing here speaks to whether
+the ATP switch works — no MPNN, no RF3, no apo/holo comparison has been run on
+the OKT3 campaign.
+
 ### Next, in order
 
-1. Decide murine vs humanised V-region (§6) **before** any sequence is committed. The
-   redesign target is framework, so rebasing afterwards invalidates the designs.
-2. Write `step6_multistate.py` for the multi-state panel — holo, apo and holo+CD3ε as
-   gates, `RF3_TRACKED_LIGANDS` recorded alongside (§5.1).
-3. Sweep `CONTIG` and `LENGTH`. Every value in the config is an unvalidated guess, and
-   segment lengths are the main lever on pocket volume.
-4. Run Route A and Route B (§4) side by side on a small batch before committing a
-   10³–10⁴ budget.
-5. Only then run S2 design at scale.
+**The §4 route is closed (§9.2). Items 1–2 decide whether OKT3 excavation
+continues at all; nothing else should be scaled until they resolve.**
 
-Optional, and cheap relative to its value: score apo for the 8,800 unscored
+1. **Enlarge the rebuildable region** — unindex BUFFER (5 residues) or the full
+   38-residue interface core instead of 18, paratope still pinned. ~20 designs.
+   Directly tests the §9.2 inference.
+2. **Feasibility-only run with the paratope unpinned.** Not a usable design — it
+   destroys CD3 binding — but it separates "RFD3 cannot open a pocket here" from
+   "our constraints forbid it". ~20 designs. Without this the negative result
+   cannot be attributed.
+3. **If 1 and 2 both fail, abandon excavation** and take decision 8: fuse a
+   validated S1 switch domain to the Fv rather than rebuilding the Fv. S1 already
+   produced 230 designs clearing the gating criterion backbone-free (§9.1); the
+   failure is specific to grafting onto a packed Ig interface.
+4. Decide murine vs humanised V-region (§6) — still required before any sequence
+   is committed, but moot until 1–3 resolve.
+5. Smoke-test `step6_multistate.py` on real designs. Written and unit-tested,
+   never run on a GPU.
+
+Optional, cheap relative to its value: score apo for the 8,800 unscored
 `partial_diffusion_wl` designs. Until that exists, every campaign-wide claim about
 switch behaviour rests on a 6 % sample (§9.1).
 
 ### Known gaps
 
-- `PARTIAL_DIFFUSION` is declared in the config but the pipeline does not yet read it;
-  Route B needs wiring into `step0_setup.py`.
-- No `step6_multistate.py` exists yet. The five-state evaluation is specified, not built.
-- Nothing has been run **for the OKT3 campaign**. No design, no metric, no wet-lab
-  result. §9.1 re-scores the prior `8btg`-lineage campaign; it says nothing about OKT3.
-- Apo is scored for only 6 % of that prior campaign (§9.1).
+- **Decision 8 is unresolved and is now the critical path**: excavate, or fuse an
+  S1 switch to the Fv.
+- `step6_multistate.py` exists and is unit-tested but has never run on a GPU; its
+  CD3 thresholds (`CD3_IPSAE_MIN`, `CD3_RETENTION_MIN`) are guesses pending the
+  wild-type reference run.
+- `cavity_scan.py` reproduces §1.3's conclusion but not its absolute numbers
+  (2–3× larger). Volumes are comparable within this work only.
+- The ~2 chainbreaks per RFD3 output have not been verified to be the A/B chain
+  break rather than new breaks inside diffused segments.
+- No wet-lab result anywhere in the project. The S1 gate's experimental half is
+  unaddressed (§9.1).
+- Apo is scored for only 6 % of the prior `8btg` campaign (§9.1).
+- The patched RFD3 (`/work3/s212001/rfd3_patched`) is outside version control.
+  Given §9.2.1 it should be deleted rather than maintained.
