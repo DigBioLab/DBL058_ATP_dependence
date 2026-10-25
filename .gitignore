@@ -8,3 +8,6 @@ pictures/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+
+# Generated design inputs (reproduce with scripts/prepare_okt3_fv.py)
+inputs/

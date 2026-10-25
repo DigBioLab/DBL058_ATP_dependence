@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
+import submit_utils
 
 sys.path.insert(0, config.ENZDES_SCRIPTS)
 sys.path.insert(0, f"{config.ENZDES_SCRIPTS}/scripts")
@@ -213,7 +214,7 @@ with open(nol_cmds, "w") as f_out:
 n_nol = sum(1 for _ in open(nol_cmds))
 print(f"Generated {n_nol} no-ligand RF3 commands (skipped {skipped}).", flush=True)
 
-jupyter_utils.make_sub_script(
+submit_utils.make_sub_script(
     nol_cmds, n_task=n_nol, group_size=10, mem="10GB", time_limit="4:00",
     cores=4, gpu="num=1:mode=exclusive_process",
     queue="cabl40s", job_name="rf3_nol",

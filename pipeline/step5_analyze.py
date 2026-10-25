@@ -43,12 +43,35 @@ df_merged = df_short.merge(
 )
 
 # ── 3. Apply ligand-dependence filter ────────────────────────────────────────
-df_final = df_merged[
-    (df_merged["best_iptm_pp_nol"] < config.IPTM_PP_NOL_CUTOFF) &
-    (df_merged["best_iptm_pp"]     >= config.IPTM_PP_CUTOFF)
-].copy()
-print(f"Ligand-dependent designs: {len(df_final)} / {len(df_merged)} "
-      f"(nol iptm_pp < {config.IPTM_PP_NOL_CUTOFF}, iptm_pp ≥ {config.IPTM_PP_CUTOFF})", flush=True)
+# A differential, not two independent thresholds. The original pair
+# (nol < 0.50, pp >= 0.20) admitted designs whose switch runs backwards: apo 0.45
+# with holo 0.25 satisfies both, yet that design assembles BETTER without ligand.
+# Configs that do not set IPTM_PP_DIFF_MIN keep the legacy behaviour.
+diff_min = getattr(config, "IPTM_PP_DIFF_MIN", None)
+
+df_merged["iptm_pp_gain"] = df_merged["best_iptm_pp"] - df_merged["best_iptm_pp_nol"]
+
+if diff_min is None:
+    df_final = df_merged[
+        (df_merged["best_iptm_pp_nol"] < config.IPTM_PP_NOL_CUTOFF) &
+        (df_merged["best_iptm_pp"]     >= config.IPTM_PP_CUTOFF)
+    ].copy()
+    print(f"Ligand-dependent designs: {len(df_final)} / {len(df_merged)} "
+          f"(nol iptm_pp < {config.IPTM_PP_NOL_CUTOFF}, "
+          f"iptm_pp ≥ {config.IPTM_PP_CUTOFF})  [legacy filter]", flush=True)
+else:
+    df_final = df_merged[
+        (df_merged["iptm_pp_gain"] >= diff_min) &
+        (df_merged["best_iptm_pp"] >= config.IPTM_PP_CUTOFF)
+    ].copy()
+    print(f"Ligand-dependent designs: {len(df_final)} / {len(df_merged)} "
+          f"(holo − apo ≥ {diff_min}, holo iptm_pp ≥ "
+          f"{config.IPTM_PP_CUTOFF})", flush=True)
+
+n_inverted = int((df_merged["iptm_pp_gain"] < 0).sum())
+if n_inverted:
+    print(f"WARNING: {n_inverted} / {len(df_merged)} designs assemble better WITHOUT "
+          f"ligand (negative iptm_pp gain)", flush=True)
 
 # ── 4. Save final CSV ─────────────────────────────────────────────────────────
 final_csv = f"{config.SHORTLISTED_DIR}/final_ligand_dependent.csv"
@@ -83,5 +106,31 @@ top = df_final[[c for c in top_cols if c in df_final.columns]].sort_values(
     "best_iptm_pl", ascending=False)
 print(f"\nTop {min(20, len(top))} ligand-dependent designs:", flush=True)
 print(top.head(20).to_string(index=False), flush=True)
+
+# ── 7. Optionally chain step 6 (third gating state: holo + CD3) ──────────────
+# Configs that do not opt in keep step5 terminal, so the 8btg_D501 campaign is
+# unaffected. Requires CD3_REF_CIF and the CD3_* thresholds in config.
+if getattr(config, "RUN_STEP6_MULTISTATE", False):
+    import re, subprocess
+    if len(df_final) == 0:
+        print("\nSkipping step6: no designs survived the ligand-dependence filter.",
+              flush=True)
+    else:
+        step6 = f"{config.PIPELINE_DIR}/step6_multistate.py"
+        cmd = (
+            f'bsub -J step6_generate -q hpc -n 2 -W 01:00 '
+            f'-R "rusage[mem=8GB]" -R "span[hosts=1]" '
+            f'-o {config.LOGS_DIR}/step6_generate_%J.out '
+            f'-e {config.LOGS_DIR}/step6_generate_%J.err '
+            f'"{config.PYTHON_EXEC} {step6} --phase generate"'
+        )
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        print(r.stdout.strip(), flush=True)
+        if r.returncode != 0:
+            print(f"WARNING: could not submit step6: {r.stderr}", flush=True)
+        else:
+            m = re.search(r"Job <(\d+)>", r.stdout)
+            print(f"Submitted step6 job: {m.group(1) if m else '?'}", flush=True)
+
 print("\n=== Pipeline complete ===", flush=True)
 print(f"Final results: {final_csv}", flush=True)
